@@ -1,26 +1,22 @@
 use mergeable::Mergeable;
 
-use crate::unique_payments::{PaymentsVec, UniquePayments};
+use crate::{
+    signature::{Nonce, Signature},
+    unique_payments::{PaymentsVec, UniquePayments},
+};
 
 multiversx_sc::imports!();
 
-pub const SIGNATURE_LEN: usize = 64;
-pub type Signature<M> = ManagedByteArray<M, SIGNATURE_LEN>;
-
-static REGISTER_ENDPOINT_NAME: &[u8] = b"registerUser";
-static FIELDS_SEPARATOR_CHAR: &[u8] = b"@";
-
-pub type Nonce = u64;
-const FIRST_NONCE: Nonce = 0;
-
 #[multiversx_sc::module]
-pub trait UsersModule: utils::UtilsModule {
+pub trait UsersModule: crate::signature::SignatureModule + utils::UtilsModule {
     #[endpoint(registerUser)]
     fn register_user(&self, user_address: ManagedAddress, signature: Signature<Self::Api>) {
         self.require_not_registered(&user_address);
-        self.check_signature(&user_address, &signature);
+        self.check_register_signature(&user_address, &signature);
 
-        let _ = self.user_ids().insert_new(&user_address);
+        let _user_id = self.user_ids().insert_new(&user_address);
+        // if first nonce ever changes, uncomment this
+        // self.user_nonce(user_id).set(FIRST_NONCE);
     }
 
     #[payable("*")]
@@ -50,23 +46,6 @@ pub trait UsersModule: utils::UtilsModule {
         let user_id = self.user_ids().get_id_non_zero(&user_address);
 
         self.user_nonce(user_id).get()
-    }
-
-    fn check_signature(&self, user_address: &ManagedAddress, signature: &Signature<Self::Api>) {
-        let own_sc_address = self.blockchain().get_sc_address();
-        let mut signature_data = ManagedBuffer::new_from_bytes(REGISTER_ENDPOINT_NAME);
-        signature_data.append_bytes(FIELDS_SEPARATOR_CHAR);
-        signature_data.append(user_address.as_managed_buffer());
-        signature_data.append_bytes(FIELDS_SEPARATOR_CHAR);
-        signature_data.append(own_sc_address.as_managed_buffer());
-        signature_data.append_bytes(FIELDS_SEPARATOR_CHAR);
-        signature_data.append_bytes(&FIRST_NONCE.to_be_bytes());
-
-        self.crypto().verify_ed25519(
-            user_address.as_managed_buffer(),
-            &signature_data,
-            signature.as_managed_buffer(),
-        );
     }
 
     fn get_or_default(
