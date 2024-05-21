@@ -54,17 +54,25 @@ pub trait ExecutionModule:
             self.check_exec_args(&action);
             self.deduct_payments(&action.payments, &mut user_tokens);
 
-            let call_type = action.call_type;
-            let original_payments = action.payments.clone();
-            let tx = self.build_tx(action);
-            match call_type {
-                CallType::Sync => tx.sync_call(),
-                CallType::Async => tx
-                    .with_callback(
+            match action.call_type {
+                CallType::Transfer => self
+                    .tx()
+                    .to(action.dest_address)
+                    .multi_esdt(action.payments)
+                    .transfer(),
+                CallType::Sync => {
+                    let tx = self.build_tx(action);
+                    tx.sync_call();
+                }
+                CallType::Async => {
+                    let original_payments = action.payments.clone();
+                    let tx = self.build_tx(action);
+                    tx.with_callback(
                         self.callbacks()
                             .user_action_cb(user_address.clone(), original_payments),
                     )
-                    .register_promise(),
+                    .register_promise();
+                }
             };
 
             user_nonce += 1;

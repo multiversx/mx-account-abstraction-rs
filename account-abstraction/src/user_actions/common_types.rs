@@ -55,6 +55,7 @@ pub struct GeneralActionData<M: ManagedTypeApi> {
 
 #[derive(TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode, Clone, Copy)]
 pub enum CallType {
+    Transfer,
     Sync,
     Async,
 }
