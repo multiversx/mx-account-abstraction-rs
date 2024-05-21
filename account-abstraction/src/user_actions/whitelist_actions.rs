@@ -1,30 +1,22 @@
+use crate::common::common_types::GasLimit;
+
 multiversx_sc::imports!();
 multiversx_sc::derive_imports!();
 
-// Note: If adding new actions, always add them to the end to not ruin backwards compatibility
-// NEVER delete actions!!!
-#[derive(
-    TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode, ManagedVecItem, Clone, Copy,
-)]
-pub enum WhitelistActionType {
-    ClaimRewardsFarm,
-    ClaimRewardsStaking,
-    ClaimRewardsDelegation,
-    ReDelegateRewards,
-}
+const GAS_TO_SAVE: GasLimit = 100_000;
 
 #[derive(TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode, ManagedVecItem)]
 pub struct WhitelistAction<M: ManagedTypeApi> {
-    pub action_type: WhitelistActionType,
     pub sc_address: ManagedAddress<M>,
+    pub endpoint_name: ManagedBuffer<M>,
 }
 
 impl<M: ManagedTypeApi> WhitelistAction<M> {
     #[inline]
-    pub fn new(action_type: WhitelistActionType, sc_address: ManagedAddress<M>) -> Self {
+    pub fn new(sc_address: ManagedAddress<M>, endpoint_name: ManagedBuffer<M>) -> Self {
         Self {
-            action_type,
             sc_address,
+            endpoint_name,
         }
     }
 }
@@ -34,14 +26,13 @@ pub trait WhitelistActionsModule:
     crate::common::users::UsersModule
     + crate::common::signature::SignatureModule
     + crate::common::custom_callbacks::CustomCallbacksModule
-    + crate::common::external_sc_interactions::ExternalScInteractionsModule
 {
-    /// Pairs of (WhitelistActionType, the SC address for which the whitelist is added)
+    /// Pairs of (SC address, endpoint name)
     #[endpoint]
     fn whitelist(
         &self,
         whitelist_address: ManagedAddress,
-        action_types: MultiValueEncoded<MultiValue2<WhitelistActionType, ManagedAddress>>,
+        action_types: MultiValueEncoded<MultiValue2<ManagedAddress, ManagedBuffer>>,
     ) {
         self.require_non_empty_action_types(&action_types);
 
@@ -64,7 +55,7 @@ pub trait WhitelistActionsModule:
     fn remove_whitelist(
         &self,
         whitelist_address: ManagedAddress,
-        action_types: MultiValueEncoded<MultiValue2<WhitelistActionType, ManagedAddress>>,
+        action_types: MultiValueEncoded<MultiValue2<ManagedAddress, ManagedBuffer>>,
     ) {
         self.require_non_empty_action_types(&action_types);
 
@@ -90,40 +81,30 @@ pub trait WhitelistActionsModule:
     fn take_action(
         &self,
         user_address: ManagedAddress,
-        action_type: WhitelistActionType,
         sc_address: ManagedAddress,
-        opt_user_token: OptionalValue<EsdtTokenPayment>,
+        endpoint_name: ManagedBuffer,
+        endpoint_args: ManagedVec<ManagedBuffer>,
+        opt_user_tokens: OptionalValue<EsdtTokenPayment>,
     ) {
         let user_id = self.user_ids().get_id_non_zero(&user_address);
         let caller = self.blockchain().get_caller();
         let caller_id = self.whitelist_ids().get_id_non_zero(&caller);
         require!(
             self.user_whitelist(user_id, caller_id)
-                .contains(&WhitelistAction::new(action_type, sc_address.clone())),
+                .contains(&WhitelistAction::new(
+                    sc_address.clone(),
+                    endpoint_name.clone()
+                )),
             "Not whitelisted for action"
         );
 
-        match action_type {
-            WhitelistActionType::ClaimRewardsFarm => {
-                require!(opt_user_token.is_some(), "Must provide farm token");
+        match opt_user_tokens {
+            OptionalValue::Some(user_tokens) => {
+                self.deduct_single_payment(user_id, &user_tokens);
 
-                let farm_token = unsafe { opt_user_token.into_option().unwrap_unchecked() };
-                self.deduct_single_payment(user_id, &farm_token);
-                self.claim_farm_rewards_promise(user_address, farm_token, sc_address);
-            }
-            WhitelistActionType::ClaimRewardsStaking => {
-                require!(opt_user_token.is_some(), "Must provide staking token");
-
-                let farm_staking_token = unsafe { opt_user_token.into_option().unwrap_unchecked() };
-                self.deduct_single_payment(user_id, &farm_staking_token);
-                self.claim_farm_staking_rewards_promise(
-                    user_address,
-                    farm_staking_token,
-                    sc_address,
-                );
-            }
-            WhitelistActionType::ClaimRewardsDelegation => todo!(),
-            WhitelistActionType::ReDelegateRewards => todo!(),
+                // TODO 
+            },
+            OptionalValue::None => todo!(),
         }
     }
 
@@ -166,6 +147,13 @@ pub trait WhitelistActionsModule:
         }
 
         result
+    }
+
+    fn get_gas_for_promise(&self) -> GasLimit {
+        let gas_left = self.blockchain().get_gas_left();
+        require!(gas_left > GAS_TO_SAVE, "Not enough gas");
+
+        gas_left - GAS_TO_SAVE
     }
 
     fn require_non_empty_action_types<T>(&self, action_types: &MultiValueEncoded<T>) {

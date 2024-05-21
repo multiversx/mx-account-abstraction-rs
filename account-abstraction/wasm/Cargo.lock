@@ -14,7 +14,6 @@ dependencies = [
  "mergeable",
  "multiversx-sc",
  "pausable",
- "utils",
  "weekly-rewards-splitting",
 ]
 
