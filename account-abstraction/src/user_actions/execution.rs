@@ -1,8 +1,4 @@
-use crate::common::{
-    common_types::{PaymentsVec, UniquePayments},
-    custom_callbacks::CallbackProxy as _,
-    signature::CheckExecutionSignatureArgs,
-};
+use crate::common::{custom_callbacks::CallbackProxy as _, signature::CheckExecutionSignatureArgs};
 
 use crate::common::common_types::{
     ActionMultiValue, ActionStruct, CallType, GasLimit, GeneralActionData, TxType,
@@ -126,19 +122,6 @@ pub trait ExecutionModule:
                 action.opt_execution.is_none(),
                 "May not use call data for user transfers"
             );
-        }
-    }
-
-    fn deduct_payments(
-        &self,
-        action_payments: &PaymentsVec<Self::Api>,
-        user_tokens: &mut UniquePayments<Self::Api>,
-    ) {
-        require!(!action_payments.is_empty(), "No payments for action");
-
-        for payment in action_payments {
-            let deduct_result = user_tokens.deduct_payment(&payment);
-            require!(deduct_result.is_ok(), "Not enough tokens");
         }
     }
 

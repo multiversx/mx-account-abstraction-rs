@@ -109,11 +109,7 @@ pub trait WhitelistActionsModule:
                 require!(opt_user_token.is_some(), "Must provide farm token");
 
                 let farm_token = unsafe { opt_user_token.into_option().unwrap_unchecked() };
-                self.user_tokens(user_id).update(|user_tokens| {
-                    let deduct_result = user_tokens.deduct_payment(&farm_token);
-                    require!(deduct_result.is_ok(), "User doesn't own enough tokens");
-                });
-
+                self.deduct_single_payment(user_id, &farm_token);
                 self.claim_farm_rewards_promise(user_address, farm_token, sc_address);
             }
             WhitelistActionType::ClaimRewardsStaking => todo!(),

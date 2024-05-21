@@ -7,6 +7,8 @@ use super::{
 
 multiversx_sc::imports!();
 
+static NOT_ENOUGH_TOKENS_ERR_MSG: &[u8] = b"Not enough tokens";
+
 #[multiversx_sc::module]
 pub trait UsersModule: super::signature::SignatureModule + utils::UtilsModule {
     #[endpoint(registerUser)]
@@ -56,6 +58,26 @@ pub trait UsersModule: super::signature::SignatureModule + utils::UtilsModule {
             mapper.get()
         } else {
             UniquePayments::new()
+        }
+    }
+
+    fn deduct_single_payment(&self, user_id: AddressId, tokens: &EsdtTokenPayment) {
+        self.user_tokens(user_id).update(|user_tokens| {
+            let deduct_result = user_tokens.deduct_payment(tokens);
+            require!(deduct_result.is_ok(), NOT_ENOUGH_TOKENS_ERR_MSG);
+        });
+    }
+
+    fn deduct_payments(
+        &self,
+        action_payments: &PaymentsVec<Self::Api>,
+        user_tokens: &mut UniquePayments<Self::Api>,
+    ) {
+        require!(!action_payments.is_empty(), "No payments for action");
+
+        for payment in action_payments {
+            let deduct_result = user_tokens.deduct_payment(&payment);
+            require!(deduct_result.is_ok(), NOT_ENOUGH_TOKENS_ERR_MSG);
         }
     }
 
