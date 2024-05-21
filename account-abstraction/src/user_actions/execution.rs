@@ -1,7 +1,7 @@
 use crate::common::{
+    common_types::{PaymentsVec, UniquePayments},
     custom_callbacks::CallbackProxy as _,
     signature::CheckExecutionSignatureArgs,
-    unique_payments::{PaymentsVec, UniquePayments},
 };
 
 use crate::common::common_types::{

@@ -1,4 +1,4 @@
-use super::unique_payments::PaymentsVec;
+use super::common_types::PaymentsVec;
 
 multiversx_sc::imports!();
 
