@@ -26,7 +26,6 @@ dependencies = [
  "multiversx-sc-scenario",
  "num-bigint",
  "pausable",
- "utils",
  "weekly-rewards-splitting",
 ]
 

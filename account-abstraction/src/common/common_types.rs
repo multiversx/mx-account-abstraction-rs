@@ -7,7 +7,7 @@ multiversx_sc::derive_imports!();
 pub type PaymentsVec<M> = ManagedVec<M, EsdtTokenPayment<M>>;
 pub type GasLimit = u64;
 pub type ActionMultiValue<M> = MultiValue3<GeneralActionData<M>, Nonce, Signature<M>>;
-pub type TxType<M> = Tx<
+pub type EsdtTxType<M> = Tx<
     TxScEnv<M>,
     (),
     ManagedAddress<M>,
@@ -16,6 +16,17 @@ pub type TxType<M> = Tx<
     FunctionCall<M>,
     (),
 >;
+pub type EgldTxType<M> = Tx<
+    TxScEnv<M>,
+    (),
+    ManagedAddress<M>,
+    Egld<BigUint<M>>,
+    ExplicitGas<GasLimit>,
+    FunctionCall<M>,
+    (),
+>;
+
+pub static EGLD_TOKEN_ID: &[u8] = b"EGLD";
 
 #[derive(TypeAbi, TopEncode, TopDecode, NestedDecode, NestedEncode, ManagedVecItem)]
 pub struct ActionStruct<M: ManagedTypeApi> {

@@ -6,7 +6,7 @@ multiversx_sc::imports!();
 
 #[multiversx_sc::module]
 pub trait CustomCallbacksModule:
-    super::users::UsersModule + super::signature::SignatureModule + utils::UtilsModule
+    super::users::UsersModule + super::signature::SignatureModule
 {
     #[callback]
     fn user_action_cb(

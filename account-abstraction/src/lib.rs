@@ -15,7 +15,6 @@ pub trait AccountAbstraction:
     + user_actions::whitelist_actions::WhitelistActionsModule
     + common::external_sc_interactions::ExternalScInteractionsModule
     + common::custom_callbacks::CustomCallbacksModule
-    + utils::UtilsModule
 {
     #[init]
     fn init(&self) {}

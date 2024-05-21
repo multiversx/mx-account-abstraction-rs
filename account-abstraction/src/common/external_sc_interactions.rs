@@ -9,7 +9,6 @@ pub trait ExternalScInteractionsModule:
     super::custom_callbacks::CustomCallbacksModule
     + super::users::UsersModule
     + super::signature::SignatureModule
-    + utils::UtilsModule
 {
     fn claim_farm_rewards_promise(
         &self,

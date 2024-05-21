@@ -35,7 +35,6 @@ pub trait WhitelistActionsModule:
     + crate::common::signature::SignatureModule
     + crate::common::custom_callbacks::CustomCallbacksModule
     + crate::common::external_sc_interactions::ExternalScInteractionsModule
-    + utils::UtilsModule
 {
     /// Pairs of (WhitelistActionType, the SC address for which the whitelist is added)
     #[endpoint]

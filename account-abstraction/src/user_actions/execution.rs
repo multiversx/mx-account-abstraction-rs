@@ -1,10 +1,14 @@
+use common_structs::PaymentsVec;
+
 use crate::common::{custom_callbacks::CallbackProxy as _, signature::CheckExecutionSignatureArgs};
 
 use crate::common::common_types::{
-    ActionMultiValue, ActionStruct, CallType, GasLimit, GeneralActionData, TxType,
+    ActionMultiValue, ActionStruct, CallType, EgldTxType, EsdtTxType, GasLimit, GeneralActionData,
+    EGLD_TOKEN_ID,
 };
 
 const DEFAULT_EXTRA_CALLBACK_GAS: GasLimit = 10_000_000;
+static INVALID_TX_DATA_ERR_MSG: &[u8] = b"Invalid Tx data";
 
 multiversx_sc::imports!();
 
@@ -13,7 +17,6 @@ pub trait ExecutionModule:
     crate::common::users::UsersModule
     + crate::common::signature::SignatureModule
     + crate::common::custom_callbacks::CustomCallbacksModule
-    + utils::UtilsModule
 {
     #[endpoint(multiActionForUser)]
     fn multi_action_for_user(
@@ -64,7 +67,7 @@ pub trait ExecutionModule:
         let tokens_mapper = self.user_tokens(user_id);
         let mut user_tokens = tokens_mapper.get();
         for action_struct in actions {
-            let (action, nonce, signature) = (
+            let (mut action, nonce, signature) = (
                 action_struct.action,
                 action_struct.user_nonce,
                 action_struct.signature,
@@ -87,27 +90,8 @@ pub trait ExecutionModule:
             self.check_exec_args(&action);
             self.deduct_payments(&action.payments, &mut user_tokens);
 
-            match action.call_type {
-                CallType::Transfer => self
-                    .tx()
-                    .to(action.dest_address)
-                    .multi_esdt(action.payments)
-                    .transfer(),
-                CallType::Sync => {
-                    let tx = self.build_tx(action);
-                    tx.sync_call();
-                }
-                CallType::Async => {
-                    let original_payments = action.payments.clone();
-                    let tx = self.build_tx(action);
-                    tx.with_callback(
-                        self.callbacks()
-                            .user_action_cb(user_address.clone(), original_payments),
-                    )
-                    .with_extra_gas_for_callback(DEFAULT_EXTRA_CALLBACK_GAS)
-                    .register_promise();
-                }
-            };
+            let egld_value = self.get_egld_value(&mut action.payments);
+            self.execute_action_by_type(user_address.clone(), egld_value, action);
 
             user_nonce += 1;
         }
@@ -125,8 +109,24 @@ pub trait ExecutionModule:
         }
     }
 
-    fn build_tx(&self, action_data: GeneralActionData<Self::Api>) -> TxType<Self::Api> {
-        require!(action_data.opt_execution.is_some(), "Invalid Tx data");
+    fn build_egld_tx(
+        &self,
+        egld_value: BigUint,
+        action_data: GeneralActionData<Self::Api>,
+    ) -> EgldTxType<Self::Api> {
+        require!(action_data.opt_execution.is_some(), INVALID_TX_DATA_ERR_MSG);
+
+        let sc_exec_data = unsafe { action_data.opt_execution.unwrap_unchecked() };
+        self.tx()
+            .to(action_data.dest_address)
+            .egld(egld_value)
+            .raw_call(sc_exec_data.endpoint_name)
+            .arguments_raw(sc_exec_data.args.into())
+            .gas(sc_exec_data.gas_limit)
+    }
+
+    fn build_esdt_tx(&self, action_data: GeneralActionData<Self::Api>) -> EsdtTxType<Self::Api> {
+        require!(action_data.opt_execution.is_some(), INVALID_TX_DATA_ERR_MSG);
 
         let sc_exec_data = unsafe { action_data.opt_execution.unwrap_unchecked() };
         self.tx()
@@ -135,6 +135,88 @@ pub trait ExecutionModule:
             .raw_call(sc_exec_data.endpoint_name)
             .arguments_raw(sc_exec_data.args.into())
             .gas(sc_exec_data.gas_limit)
+    }
+
+    fn get_egld_value(&self, payments: &mut PaymentsVec<Self::Api>) -> BigUint {
+        let egld_token_id = TokenIdentifier::from_esdt_bytes(EGLD_TOKEN_ID);
+        let mut opt_egld_index = None;
+        let mut egld_value = BigUint::zero();
+        for (i, payment) in payments.iter().enumerate() {
+            if payment.token_identifier != egld_token_id {
+                continue;
+            }
+
+            require!(opt_egld_index.is_none(), "Only one EGLD payment allowed");
+
+            opt_egld_index = Some(i);
+            egld_value = payment.amount;
+        }
+
+        if let Some(index) = opt_egld_index {
+            payments.remove(index);
+
+            require!(payments.is_empty(), "Cannot transfer both EGLD and ESDT");
+        }
+
+        egld_value
+    }
+
+    fn execute_action_by_type(
+        &self,
+        user_address: ManagedAddress,
+        egld_value: BigUint,
+        action: GeneralActionData<Self::Api>,
+    ) {
+        match action.call_type {
+            CallType::Transfer => {
+                if egld_value == 0 {
+                    self.tx()
+                        .to(action.dest_address)
+                        .multi_esdt(action.payments)
+                        .transfer();
+                } else {
+                    self.tx()
+                        .to(action.dest_address)
+                        .egld(egld_value)
+                        .transfer()
+                }
+            }
+            CallType::Sync => {
+                if egld_value == 0 {
+                    let tx = self.build_esdt_tx(action);
+                    tx.sync_call();
+                } else {
+                    let tx = self.build_egld_tx(egld_value, action);
+                    tx.sync_call();
+                }
+            }
+            CallType::Async => {
+                let mut original_payments = action.payments.clone();
+                if egld_value == 0 {
+                    let tx = self.build_esdt_tx(action);
+                    tx.with_callback(
+                        self.callbacks()
+                            .user_action_cb(user_address, original_payments),
+                    )
+                    .with_extra_gas_for_callback(DEFAULT_EXTRA_CALLBACK_GAS)
+                    .register_promise();
+                } else {
+                    original_payments.push(EsdtTokenPayment::new(
+                        TokenIdentifier::from_esdt_bytes(EGLD_TOKEN_ID),
+                        0,
+                        egld_value.clone(),
+                    ));
+
+                    let tx = self.build_egld_tx(egld_value, action);
+                    tx.with_callback(
+                        self.callbacks()
+                            .user_action_cb(user_address, original_payments),
+                    )
+                    .with_extra_gas_for_callback(DEFAULT_EXTRA_CALLBACK_GAS)
+                    .register_promise();
+                }
+            }
+        };
     }
 
     fn require_non_empty_actions<T>(&self, actions: &MultiValueEncoded<T>) {
