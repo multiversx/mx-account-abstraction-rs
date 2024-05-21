@@ -50,7 +50,7 @@ pub trait WhitelistActionsModule:
             .insert(caller_id);
     }
 
-    /// Pairs of (WhitelistActionType, the SC address for which the whitelist was added)
+    /// Pairs of (SC address, endpoint name)
     #[endpoint(removeWhitelist)]
     fn remove_whitelist(
         &self,
@@ -102,8 +102,8 @@ pub trait WhitelistActionsModule:
             OptionalValue::Some(user_tokens) => {
                 self.deduct_single_payment(user_id, &user_tokens);
 
-                // TODO 
-            },
+                // TODO
+            }
             OptionalValue::None => todo!(),
         }
     }
