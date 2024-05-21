@@ -37,7 +37,7 @@ pub trait ExecutionModule:
         self.multi_action_for_user_common(&user_address, &actions_vec, &own_sc_address);
     }
 
-    /// Pairs of (user_address, action)
+    /// Pairs of (user_address, actions_vec)
     #[endpoint(multiActionForMultiUsers)]
     fn multi_action_for_multi_users(
         &self,
