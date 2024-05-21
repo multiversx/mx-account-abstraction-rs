@@ -18,6 +18,13 @@ pub type TxType<M> = Tx<
     (),
 >;
 
+#[derive(TypeAbi, TopEncode, TopDecode, NestedDecode, NestedEncode, ManagedVecItem)]
+pub struct ActionStruct<M: ManagedTypeApi> {
+    pub action: GeneralActionData<M>,
+    pub user_nonce: Nonce,
+    pub signature: Signature<M>,
+}
+
 const MAX_ENDPOINT_NAME_LEN: usize = 100;
 static BANNED_ENDPOINT_NAMES: &[&[u8]] = &[
     b"ESDTLocalMint",
@@ -38,14 +45,14 @@ static BANNED_ENDPOINT_NAMES: &[&[u8]] = &[
     b"upgradeContract",
 ];
 
-#[derive(TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode)]
+#[derive(TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode, ManagedVecItem)]
 pub struct ScExecutionData<M: ManagedTypeApi> {
     pub endpoint_name: ManagedBuffer<M>,
     pub args: ManagedVec<M, ManagedBuffer<M>>,
     pub gas_limit: GasLimit,
 }
 
-#[derive(TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode)]
+#[derive(TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode, ManagedVecItem)]
 pub struct GeneralActionData<M: ManagedTypeApi> {
     pub call_type: CallType,
     pub dest_address: ManagedAddress<M>,
@@ -53,7 +60,9 @@ pub struct GeneralActionData<M: ManagedTypeApi> {
     pub opt_execution: Option<ScExecutionData<M>>,
 }
 
-#[derive(TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode, Clone, Copy)]
+#[derive(
+    TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode, Clone, Copy, ManagedVecItem,
+)]
 pub enum CallType {
     Transfer,
     Sync,

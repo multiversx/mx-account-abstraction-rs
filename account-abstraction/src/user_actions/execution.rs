@@ -3,7 +3,9 @@ use crate::{
     unique_payments::{PaymentsVec, UniquePayments},
 };
 
-use super::common_types::{ActionMultiValue, CallType, GasLimit, GeneralActionData, TxType};
+use super::common_types::{
+    ActionMultiValue, ActionStruct, CallType, GasLimit, GeneralActionData, TxType,
+};
 
 const DEFAULT_EXTRA_CALLBACK_GAS: GasLimit = 10_000_000;
 
@@ -22,13 +24,38 @@ pub trait ExecutionModule:
         self.require_non_empty_actions(&actions);
 
         let own_sc_address = self.blockchain().get_sc_address();
-        self.multi_action_for_user_common(&user_address, actions, &own_sc_address);
+        let mut actions_vec = ManagedVec::new();
+        for action_multi in actions {
+            let (action, user_nonce, signature) = action_multi.into_tuple();
+            let action_struct = ActionStruct {
+                action,
+                user_nonce,
+                signature,
+            };
+            actions_vec.push(action_struct);
+        }
+        self.multi_action_for_user_common(&user_address, &actions_vec, &own_sc_address);
+    }
+
+    /// Pairs of (user_address, action)
+    #[endpoint(multiActionForMultiUsers)]
+    fn multi_action_for_multi_users(
+        &self,
+        args: MultiValueEncoded<MultiValue2<ManagedAddress, ManagedVec<ActionStruct<Self::Api>>>>,
+    ) {
+        self.require_non_empty_actions(&args);
+
+        let own_sc_address = self.blockchain().get_sc_address();
+        for pair in args {
+            let (user_address, actions_vec) = pair.into_tuple();
+            self.multi_action_for_user_common(&user_address, &actions_vec, &own_sc_address);
+        }
     }
 
     fn multi_action_for_user_common(
         &self,
         user_address: &ManagedAddress,
-        actions: MultiValueEncoded<ActionMultiValue<Self::Api>>,
+        actions: &ManagedVec<ActionStruct<Self::Api>>,
         own_sc_address: &ManagedAddress,
     ) {
         let user_id = self.user_ids().get_id_non_zero(user_address);
@@ -36,8 +63,12 @@ pub trait ExecutionModule:
         let mut user_nonce = nonce_mapper.get();
         let tokens_mapper = self.user_tokens(user_id);
         let mut user_tokens = tokens_mapper.get();
-        for action_multi in actions {
-            let (action, nonce, signature) = action_multi.into_tuple();
+        for action_struct in actions {
+            let (action, nonce, signature) = (
+                action_struct.action,
+                action_struct.user_nonce,
+                action_struct.signature,
+            );
             require!(nonce == user_nonce, "Invalid user nonce");
             require!(
                 &action.dest_address != own_sc_address,
@@ -119,7 +150,7 @@ pub trait ExecutionModule:
             .gas(sc_exec_data.gas_limit)
     }
 
-    fn require_non_empty_actions(&self, actions: &MultiValueEncoded<ActionMultiValue<Self::Api>>) {
+    fn require_non_empty_actions<T>(&self, actions: &MultiValueEncoded<T>) {
         require!(!actions.is_empty(), "No actions");
     }
 

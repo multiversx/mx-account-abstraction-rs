@@ -6,9 +6,9 @@
 
 // Init:                                 1
 // Upgrade:                              1
-// Endpoints:                            5
+// Endpoints:                            6
 // Async Callback:                       1
-// Total number of exported functions:   8
+// Total number of exported functions:   9
 
 #![no_std]
 
@@ -25,6 +25,7 @@ multiversx_sc_wasm_adapter::endpoints! {
         getUserTokens => get_user_tokens
         getUserNonce => get_user_nonce
         multiActionForUser => multi_action_for_user
+        multiActionForMultiUsers => multi_action_for_multi_users
     )
 }
 
