@@ -68,8 +68,8 @@ impl<M: ManagedTypeApi> Action<M> {
 
     pub fn is_banned_endpoint_name(&self) -> bool {
         match self {
-            Action::Sync { action_data } => Self::is_banned_endpoint_internal(&action_data),
-            Action::Async { action_data } => Self::is_banned_endpoint_internal(&action_data),
+            Action::Sync { action_data } => Self::is_banned_endpoint_internal(action_data),
+            Action::Async { action_data } => Self::is_banned_endpoint_internal(action_data),
         }
     }
 

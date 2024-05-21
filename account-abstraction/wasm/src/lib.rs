@@ -6,9 +6,9 @@
 
 // Init:                                 1
 // Upgrade:                              1
-// Endpoints:                            4
-// Async Callback (empty):               1
-// Total number of exported functions:   7
+// Endpoints:                            5
+// Async Callback:                       1
+// Total number of exported functions:   8
 
 #![no_std]
 
@@ -24,7 +24,8 @@ multiversx_sc_wasm_adapter::endpoints! {
         depositForUser => deposit_for_user
         getUserTokens => get_user_tokens
         getUserNonce => get_user_nonce
+        multiActionForUser => multi_action_for_user
     )
 }
 
-multiversx_sc_wasm_adapter::async_callback_empty! {}
+multiversx_sc_wasm_adapter::async_callback! { account_abstraction }

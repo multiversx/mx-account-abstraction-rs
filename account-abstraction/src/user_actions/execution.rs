@@ -42,8 +42,8 @@ pub trait ExecutionModule:
             require!(!action.is_banned_endpoint_name(), "Invalid endpoint name");
 
             let args = CheckExecutionSignatureArgs {
-                own_sc_address: own_sc_address,
-                user_address: user_address,
+                own_sc_address,
+                user_address,
                 user_nonce,
                 action: &action,
                 signature: &signature,
@@ -56,16 +56,19 @@ pub trait ExecutionModule:
                     self.deduct_payments(&action_data.payments, &mut user_tokens);
 
                     let tx = self.build_tx(action_data);
-
-                    // execute
+                    tx.sync_call();
                 }
                 Action::Async { action_data } => {
                     self.check_exec_args(&action_data);
                     self.deduct_payments(&action_data.payments, &mut user_tokens);
 
+                    let original_payments = action_data.payments.clone();
                     let tx = self.build_tx(action_data);
-
-                    // execute
+                    tx.with_callback(
+                        self.callbacks()
+                            .user_action_cb(user_address.clone(), original_payments),
+                    )
+                    .register_promise();
                 }
             };
 
@@ -124,5 +127,11 @@ pub trait ExecutionModule:
         original_payments: PaymentsVec<Self::Api>,
         #[call_result] call_result: ManagedAsyncCallResult<IgnoreValue>,
     ) {
+        if call_result.is_err() {
+            self.tx()
+                .to(original_caller)
+                .multi_esdt(original_payments)
+                .transfer();
+        }
     }
 }
