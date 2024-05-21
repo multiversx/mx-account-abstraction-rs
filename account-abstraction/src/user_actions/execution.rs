@@ -3,7 +3,9 @@ use crate::{
     unique_payments::{PaymentsVec, UniquePayments},
 };
 
-use super::common_types::{ActionMultiValue, CallType, GeneralActionData, TxType};
+use super::common_types::{ActionMultiValue, CallType, GasLimit, GeneralActionData, TxType};
+
+const DEFAULT_EXTRA_CALLBACK_GAS: GasLimit = 10_000_000;
 
 multiversx_sc::imports!();
 
@@ -71,6 +73,7 @@ pub trait ExecutionModule:
                         self.callbacks()
                             .user_action_cb(user_address.clone(), original_payments),
                     )
+                    .with_extra_gas_for_callback(DEFAULT_EXTRA_CALLBACK_GAS)
                     .register_promise();
                 }
             };
@@ -127,11 +130,15 @@ pub trait ExecutionModule:
         original_payments: PaymentsVec<Self::Api>,
         #[call_result] call_result: ManagedAsyncCallResult<IgnoreValue>,
     ) {
-        if call_result.is_err() {
-            self.tx()
-                .to(original_caller)
-                .multi_esdt(original_payments)
-                .transfer();
+        if call_result.is_ok() {
+            return;
         }
+
+        let user_id = self.user_ids().get_id(&original_caller);
+        self.user_tokens(user_id).update(|user_tokens| {
+            for payment in &original_payments {
+                user_tokens.add_payment(payment);
+            }
+        });
     }
 }
