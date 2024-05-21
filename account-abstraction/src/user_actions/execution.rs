@@ -105,18 +105,15 @@ pub trait ExecutionModule:
     }
 
     fn build_tx(&self, action_data: GeneralActionData<Self::Api>) -> TxType<Self::Api> {
-        let base_tx = self
-            .tx()
-            .to(action_data.dest_address)
-            .multi_esdt(action_data.payments);
+        require!(action_data.opt_execution.is_some(), "Invalid Tx data");
 
-        match action_data.opt_execution {
-            Some(sc_exec_data) => base_tx
-                .raw_call(sc_exec_data.endpoint_name)
-                .arguments_raw(sc_exec_data.args.into())
-                .gas(sc_exec_data.gas_limit),
-            None => base_tx.raw_call("").gas(0),
-        }
+        let sc_exec_data = unsafe { action_data.opt_execution.unwrap_unchecked() };
+        self.tx()
+            .to(action_data.dest_address)
+            .multi_esdt(action_data.payments)
+            .raw_call(sc_exec_data.endpoint_name)
+            .arguments_raw(sc_exec_data.args.into())
+            .gas(sc_exec_data.gas_limit)
     }
 
     fn require_non_empty_actions(&self, actions: &MultiValueEncoded<ActionMultiValue<Self::Api>>) {
