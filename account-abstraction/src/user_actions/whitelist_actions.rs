@@ -112,7 +112,17 @@ pub trait WhitelistActionsModule:
                 self.deduct_single_payment(user_id, &farm_token);
                 self.claim_farm_rewards_promise(user_address, farm_token, sc_address);
             }
-            WhitelistActionType::ClaimRewardsStaking => todo!(),
+            WhitelistActionType::ClaimRewardsStaking => {
+                require!(opt_user_token.is_some(), "Must provide staking token");
+
+                let farm_staking_token = unsafe { opt_user_token.into_option().unwrap_unchecked() };
+                self.deduct_single_payment(user_id, &farm_staking_token);
+                self.claim_farm_staking_rewards_promise(
+                    user_address,
+                    farm_staking_token,
+                    sc_address,
+                );
+            }
             WhitelistActionType::ClaimRewardsDelegation => todo!(),
             WhitelistActionType::ReDelegateRewards => todo!(),
         }
