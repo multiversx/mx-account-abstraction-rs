@@ -1,4 +1,4 @@
-use crate::user_actions::common_types::Action;
+use crate::user_actions::common_types::GeneralActionData;
 
 multiversx_sc::imports!();
 
@@ -15,7 +15,7 @@ pub struct CheckExecutionSignatureArgs<'a, M: ManagedTypeApi> {
     pub own_sc_address: &'a ManagedAddress<M>,
     pub user_address: &'a ManagedAddress<M>,
     pub user_nonce: Nonce,
-    pub action: &'a Action<M>,
+    pub action: &'a GeneralActionData<M>,
     pub signature: &'a Signature<M>,
 }
 

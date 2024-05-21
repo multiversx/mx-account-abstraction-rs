@@ -1,10 +1,9 @@
 use crate::{
     signature::CheckExecutionSignatureArgs,
     unique_payments::{PaymentsVec, UniquePayments},
-    user_actions::common_types::Action,
 };
 
-use super::common_types::{ActionMultiValue, GeneralActionData, TxType};
+use super::common_types::{ActionMultiValue, CallType, GeneralActionData, TxType};
 
 multiversx_sc::imports!();
 
@@ -38,7 +37,10 @@ pub trait ExecutionModule:
         for action_multi in actions {
             let (action, nonce, signature) = action_multi.into_tuple();
             require!(nonce == user_nonce, "Invalid user nonce");
-            require!(action.is_valid_dest(own_sc_address), "Invalid destination");
+            require!(
+                &action.dest_address != own_sc_address,
+                "Invalid destination"
+            );
             require!(!action.is_banned_endpoint_name(), "Invalid endpoint name");
 
             let args = CheckExecutionSignatureArgs {
@@ -49,27 +51,20 @@ pub trait ExecutionModule:
                 signature: &signature,
             };
             self.check_execution_signature(args);
+            self.check_exec_args(&action);
+            self.deduct_payments(&action.payments, &mut user_tokens);
 
-            match action {
-                Action::Sync { action_data } => {
-                    self.check_exec_args(&action_data);
-                    self.deduct_payments(&action_data.payments, &mut user_tokens);
-
-                    let tx = self.build_tx(action_data);
-                    tx.sync_call();
-                }
-                Action::Async { action_data } => {
-                    self.check_exec_args(&action_data);
-                    self.deduct_payments(&action_data.payments, &mut user_tokens);
-
-                    let original_payments = action_data.payments.clone();
-                    let tx = self.build_tx(action_data);
-                    tx.with_callback(
+            let call_type = action.call_type;
+            let original_payments = action.payments.clone();
+            let tx = self.build_tx(action);
+            match call_type {
+                CallType::Sync => tx.sync_call(),
+                CallType::Async => tx
+                    .with_callback(
                         self.callbacks()
                             .user_action_cb(user_address.clone(), original_payments),
                     )
-                    .register_promise();
-                }
+                    .register_promise(),
             };
 
             user_nonce += 1;

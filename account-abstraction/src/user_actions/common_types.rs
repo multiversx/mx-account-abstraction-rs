@@ -7,7 +7,7 @@ multiversx_sc::imports!();
 multiversx_sc::derive_imports!();
 
 pub type GasLimit = u64;
-pub type ActionMultiValue<M> = MultiValue3<Action<M>, Nonce, Signature<M>>;
+pub type ActionMultiValue<M> = MultiValue3<GeneralActionData<M>, Nonce, Signature<M>>;
 pub type TxType<M> = Tx<
     TxScEnv<M>,
     (),
@@ -47,34 +47,21 @@ pub struct ScExecutionData<M: ManagedTypeApi> {
 
 #[derive(TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode)]
 pub struct GeneralActionData<M: ManagedTypeApi> {
+    pub call_type: CallType,
     pub dest_address: ManagedAddress<M>,
     pub payments: PaymentsVec<M>,
     pub opt_execution: Option<ScExecutionData<M>>,
 }
 
-#[derive(TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode)]
-pub enum Action<M: ManagedTypeApi> {
-    Sync { action_data: GeneralActionData<M> },
-    Async { action_data: GeneralActionData<M> },
+#[derive(TypeAbi, TopEncode, TopDecode, NestedEncode, NestedDecode, Clone, Copy)]
+pub enum CallType {
+    Sync,
+    Async,
 }
 
-impl<M: ManagedTypeApi> Action<M> {
-    pub fn is_valid_dest(&self, own_address: &ManagedAddress<M>) -> bool {
-        match self {
-            Action::Sync { action_data } => &action_data.dest_address != own_address,
-            Action::Async { action_data } => &action_data.dest_address != own_address,
-        }
-    }
-
+impl<M: ManagedTypeApi> GeneralActionData<M> {
     pub fn is_banned_endpoint_name(&self) -> bool {
-        match self {
-            Action::Sync { action_data } => Self::is_banned_endpoint_internal(action_data),
-            Action::Async { action_data } => Self::is_banned_endpoint_internal(action_data),
-        }
-    }
-
-    fn is_banned_endpoint_internal(action_data: &GeneralActionData<M>) -> bool {
-        match &action_data.opt_execution {
+        match &self.opt_execution {
             Some(execution) => {
                 let name_len = execution.endpoint_name.len();
                 if name_len == 0 {
