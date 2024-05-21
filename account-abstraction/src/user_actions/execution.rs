@@ -1,10 +1,8 @@
-use common_structs::PaymentsVec;
-
 use crate::common::{custom_callbacks::CallbackProxy as _, signature::CheckExecutionSignatureArgs};
 
 use crate::common::common_types::{
     ActionMultiValue, ActionStruct, CallType, EgldTxType, EsdtTxType, GasLimit, GeneralActionData,
-    EGLD_TOKEN_ID,
+    PaymentsVec, EGLD_TOKEN_ID,
 };
 
 const DEFAULT_EXTRA_CALLBACK_GAS: GasLimit = 10_000_000;

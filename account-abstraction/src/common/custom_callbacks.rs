@@ -1,5 +1,3 @@
-use farm::base_functions::ClaimRewardsResultType;
-
 use super::common_types::PaymentsVec;
 
 multiversx_sc::imports!();
@@ -20,25 +18,6 @@ pub trait CustomCallbacksModule:
         }
 
         self.refund_user(&original_user, &original_payments);
-    }
-
-    #[callback]
-    fn claim_farm_rew_cb(
-        &self,
-        original_user: ManagedAddress,
-        original_payments: PaymentsVec<Self::Api>,
-        #[call_result] call_result: ManagedAsyncCallResult<ClaimRewardsResultType<Self::Api>>,
-    ) {
-        match call_result {
-            ManagedAsyncCallResult::Ok(multi_result) => {
-                let (new_farm_token, rewards) = multi_result.into_tuple();
-                let mut all_tokens = ManagedVec::from_single_item(new_farm_token);
-                all_tokens.push(rewards);
-
-                self.add_user_funds(&original_user, &all_tokens);
-            }
-            ManagedAsyncCallResult::Err(_) => self.refund_user(&original_user, &original_payments),
-        };
     }
 
     fn refund_user(&self, user: &ManagedAddress, original_payments: &PaymentsVec<Self::Api>) {
