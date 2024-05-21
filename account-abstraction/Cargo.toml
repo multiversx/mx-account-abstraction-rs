@@ -19,6 +19,34 @@ rev = "c136244"
 git = "https://github.com/multiversx/mx-exchange-sc"
 rev = "c136244"
 
+[dependencies.farm]
+git = "https://github.com/multiversx/mx-exchange-sc"
+rev = "c136244"
+
+[dependencies.config]
+git = "https://github.com/multiversx/mx-exchange-sc"
+rev = "c136244"
+
+[dependencies.common_structs]
+git = "https://github.com/multiversx/mx-exchange-sc"
+rev = "c136244"
+
+[dependencies.pausable]
+git = "https://github.com/multiversx/mx-exchange-sc"
+rev = "c136244"
+
+[dependencies.farm-boosted-yields]
+git = "https://github.com/multiversx/mx-exchange-sc"
+rev = "c136244"
+
+[dependencies.weekly-rewards-splitting]
+git = "https://github.com/multiversx/mx-exchange-sc"
+rev = "c136244"
+
+[dependencies.energy-factory]
+git = "https://github.com/multiversx/mx-exchange-sc"
+rev = "c136244"
+
 [dev-dependencies]
 num-bigint = "0.4"
 
