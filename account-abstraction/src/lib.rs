@@ -11,6 +11,7 @@ pub trait AccountAbstraction:
     common::users::UsersModule
     + common::signature::SignatureModule
     + user_actions::execution::ExecutionModule
+    + user_actions::whitelist_actions::WhitelistActionsModule
     + common::custom_callbacks::CustomCallbacksModule
     + utils::UtilsModule
 {
