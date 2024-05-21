@@ -1,10 +1,10 @@
-use super::custom_callbacks::CallbackProxy as _;
-use crate::{
+use crate::common::{
+    custom_callbacks::CallbackProxy as _,
     signature::CheckExecutionSignatureArgs,
     unique_payments::{PaymentsVec, UniquePayments},
 };
 
-use super::common_types::{
+use crate::common::common_types::{
     ActionMultiValue, ActionStruct, CallType, GasLimit, GeneralActionData, TxType,
 };
 
@@ -14,9 +14,9 @@ multiversx_sc::imports!();
 
 #[multiversx_sc::module]
 pub trait ExecutionModule:
-    crate::users::UsersModule
-    + crate::signature::SignatureModule
-    + super::custom_callbacks::CustomCallbacksModule
+    crate::common::users::UsersModule
+    + crate::common::signature::SignatureModule
+    + crate::common::custom_callbacks::CustomCallbacksModule
     + utils::UtilsModule
 {
     #[endpoint(multiActionForUser)]

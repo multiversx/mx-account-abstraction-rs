@@ -1,4 +1,4 @@
-use crate::user_actions::common_types::GeneralActionData;
+use super::common_types::GeneralActionData;
 
 multiversx_sc::imports!();
 

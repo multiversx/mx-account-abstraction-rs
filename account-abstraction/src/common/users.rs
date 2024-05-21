@@ -1,6 +1,6 @@
 use mergeable::Mergeable;
 
-use crate::{
+use super::{
     signature::{Nonce, Signature},
     unique_payments::{PaymentsVec, UniquePayments},
 };
@@ -8,7 +8,7 @@ use crate::{
 multiversx_sc::imports!();
 
 #[multiversx_sc::module]
-pub trait UsersModule: crate::signature::SignatureModule + utils::UtilsModule {
+pub trait UsersModule: super::signature::SignatureModule + utils::UtilsModule {
     #[endpoint(registerUser)]
     fn register_user(&self, user_address: ManagedAddress, signature: Signature<Self::Api>) {
         self.require_not_registered(&user_address);

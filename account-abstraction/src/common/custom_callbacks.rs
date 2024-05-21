@@ -1,10 +1,10 @@
-use crate::unique_payments::PaymentsVec;
+use super::unique_payments::PaymentsVec;
 
 multiversx_sc::imports!();
 
 #[multiversx_sc::module]
 pub trait CustomCallbacksModule:
-    crate::users::UsersModule + crate::signature::SignatureModule + utils::UtilsModule
+    super::users::UsersModule + super::signature::SignatureModule + utils::UtilsModule
 {
     #[callback]
     fn user_action_cb(
