@@ -1,5 +1,5 @@
+use super::custom_callbacks::CallbackProxy as _;
 use crate::{
-    custom_callbacks::CallbackProxy as _,
     signature::CheckExecutionSignatureArgs,
     unique_payments::{PaymentsVec, UniquePayments},
 };
@@ -16,7 +16,7 @@ multiversx_sc::imports!();
 pub trait ExecutionModule:
     crate::users::UsersModule
     + crate::signature::SignatureModule
-    + crate::custom_callbacks::CustomCallbacksModule
+    + super::custom_callbacks::CustomCallbacksModule
     + utils::UtilsModule
 {
     #[endpoint(multiActionForUser)]
