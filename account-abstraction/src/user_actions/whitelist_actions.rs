@@ -34,6 +34,7 @@ pub trait WhitelistActionsModule:
     crate::common::users::UsersModule
     + crate::common::signature::SignatureModule
     + crate::common::custom_callbacks::CustomCallbacksModule
+    + crate::common::external_sc_interactions::ExternalScInteractionsModule
     + utils::UtilsModule
 {
     /// Pairs of (WhitelistActionType, the SC address for which the whitelist is added)
@@ -92,18 +93,29 @@ pub trait WhitelistActionsModule:
         user_address: ManagedAddress,
         action_type: WhitelistActionType,
         sc_address: ManagedAddress,
+        opt_user_token: OptionalValue<EsdtTokenPayment>,
     ) {
         let user_id = self.user_ids().get_id_non_zero(&user_address);
         let caller = self.blockchain().get_caller();
         let caller_id = self.whitelist_ids().get_id_non_zero(&caller);
         require!(
             self.user_whitelist(user_id, caller_id)
-                .contains(&WhitelistAction::new(action_type, sc_address)),
+                .contains(&WhitelistAction::new(action_type, sc_address.clone())),
             "Not whitelisted for action"
         );
 
         match action_type {
-            WhitelistActionType::ClaimRewardsFarm => todo!(),
+            WhitelistActionType::ClaimRewardsFarm => {
+                require!(opt_user_token.is_some(), "Must provide farm token");
+
+                let farm_token = unsafe { opt_user_token.into_option().unwrap_unchecked() };
+                self.user_tokens(user_id).update(|user_tokens| {
+                    let deduct_result = user_tokens.deduct_payment(&farm_token);
+                    require!(deduct_result.is_ok(), "User doesn't own enough tokens");
+                });
+
+                self.claim_farm_rewards_promise(user_address, farm_token, sc_address);
+            }
             WhitelistActionType::ClaimRewardsStaking => todo!(),
             WhitelistActionType::ClaimRewardsDelegation => todo!(),
             WhitelistActionType::ReDelegateRewards => todo!(),
