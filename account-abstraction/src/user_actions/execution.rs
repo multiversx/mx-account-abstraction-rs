@@ -1,8 +1,8 @@
 use crate::common::{custom_callbacks::CallbackProxy as _, signature::CheckExecutionSignatureArgs};
 
 use crate::common::common_types::{
-    ActionMultiValue, ActionStruct, CallType, EgldTxType, EsdtTxType, GasLimit, GeneralActionData,
-    PaymentsVec, EGLD_TOKEN_ID,
+    Action, ActionMultiValue, ActionStruct, CallType, EgldTxType, EsdtTxType, GasLimit,
+    GeneralActionData, PaymentsVec, EGLD_TOKEN_ID,
 };
 
 const DEFAULT_EXTRA_CALLBACK_GAS: GasLimit = 10_000_000;
@@ -53,10 +53,10 @@ pub trait ExecutionModule:
         }
     }
 
-    fn multi_action_for_user_common(
+    fn multi_action_for_user_common<T: Action<Self::Api>>(
         &self,
         user_address: &ManagedAddress,
-        actions: &ManagedVec<ActionStruct<Self::Api>>,
+        actions: &ManagedVec<T>,
         own_sc_address: &ManagedAddress,
     ) {
         let user_id = self.user_ids().get_id_non_zero(user_address);
@@ -65,33 +65,39 @@ pub trait ExecutionModule:
         let tokens_mapper = self.user_tokens(user_id);
         let mut user_tokens = tokens_mapper.get();
         for action_struct in actions {
-            let (mut action, nonce, signature) = (
-                action_struct.action,
-                action_struct.user_nonce,
-                action_struct.signature,
+            let (opt_nonce, opt_signature, mut action) = (
+                action_struct.get_opt_nonce(),
+                action_struct.get_opt_signature(),
+                action_struct.get_general_action_data(),
             );
-            require!(nonce == user_nonce, "Invalid user nonce");
             require!(
                 &action.dest_address != own_sc_address,
                 "Invalid destination"
             );
             require!(!action.is_banned_endpoint_name(), "Invalid endpoint name");
 
-            let args = CheckExecutionSignatureArgs {
-                own_sc_address,
-                user_address,
-                user_nonce,
-                action: &action,
-                signature: &signature,
-            };
-            self.check_execution_signature(args);
+            if let Some(nonce) = opt_nonce {
+                require!(nonce == user_nonce, "Invalid user nonce");
+
+                if let Some(signature) = opt_signature {
+                    let args = CheckExecutionSignatureArgs {
+                        own_sc_address,
+                        user_address,
+                        user_nonce,
+                        action: &action,
+                        signature: &signature,
+                    };
+                    self.check_execution_signature(args);
+                }
+
+                user_nonce += 1;
+            }
+
             self.check_exec_args(&action);
             self.deduct_payments(&action.payments, &mut user_tokens);
 
             let egld_value = self.get_egld_value(&mut action.payments);
             self.execute_action_by_type(user_address.clone(), egld_value, action);
-
-            user_nonce += 1;
         }
 
         nonce_mapper.set(user_nonce);

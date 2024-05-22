@@ -35,6 +35,28 @@ pub struct ActionStruct<M: ManagedTypeApi> {
     pub signature: Signature<M>,
 }
 
+pub trait Action<M: ManagedTypeApi>: ManagedVecItem {
+    fn get_general_action_data(self) -> GeneralActionData<M>;
+
+    fn get_opt_nonce(&self) -> Option<Nonce>;
+
+    fn get_opt_signature(&self) -> Option<Signature<M>>;
+}
+
+impl<M: ManagedTypeApi> Action<M> for ActionStruct<M> {
+    fn get_general_action_data(self) -> GeneralActionData<M> {
+        self.action
+    }
+
+    fn get_opt_nonce(&self) -> Option<Nonce> {
+        Some(self.user_nonce)
+    }
+
+    fn get_opt_signature(&self) -> Option<Signature<M>> {
+        Some(self.signature.clone())
+    }
+}
+
 const MAX_ENDPOINT_NAME_LEN: usize = 100;
 static BANNED_ENDPOINT_NAMES: &[&[u8]] = &[
     b"ESDTLocalMint",
@@ -68,6 +90,20 @@ pub struct GeneralActionData<M: ManagedTypeApi> {
     pub dest_address: ManagedAddress<M>,
     pub payments: PaymentsVec<M>,
     pub opt_execution: Option<ScExecutionData<M>>,
+}
+
+impl<M: ManagedTypeApi> Action<M> for GeneralActionData<M> {
+    fn get_general_action_data(self) -> GeneralActionData<M> {
+        self
+    }
+
+    fn get_opt_nonce(&self) -> Option<Nonce> {
+        None
+    }
+
+    fn get_opt_signature(&self) -> Option<Signature<M>> {
+        None
+    }
 }
 
 #[derive(

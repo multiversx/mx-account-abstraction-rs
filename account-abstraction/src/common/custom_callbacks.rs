@@ -13,11 +13,13 @@ pub trait CustomCallbacksModule:
         original_payments: PaymentsVec<Self::Api>,
         #[call_result] call_result: ManagedAsyncCallResult<IgnoreValue>,
     ) {
-        if call_result.is_ok() {
-            return;
+        match call_result {
+            ManagedAsyncCallResult::Ok(_) => {
+                let payments = self.get_esdt_and_egld_payments();
+                self.add_user_funds(&original_user, &payments);
+            }
+            ManagedAsyncCallResult::Err(_) => self.refund_user(&original_user, &original_payments),
         }
-
-        self.refund_user(&original_user, &original_payments);
     }
 
     fn refund_user(&self, user: &ManagedAddress, original_payments: &PaymentsVec<Self::Api>) {

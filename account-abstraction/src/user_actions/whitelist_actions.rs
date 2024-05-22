@@ -1,4 +1,6 @@
-use crate::common::common_types::GasLimit;
+use crate::common::common_types::{
+    CallType, GasLimit, GeneralActionData, PaymentsVec, ScExecutionData,
+};
 
 multiversx_sc::imports!();
 multiversx_sc::derive_imports!();
@@ -26,6 +28,7 @@ pub trait WhitelistActionsModule:
     crate::common::users::UsersModule
     + crate::common::signature::SignatureModule
     + crate::common::custom_callbacks::CustomCallbacksModule
+    + super::execution::ExecutionModule
 {
     /// Pairs of (SC address, endpoint name)
     #[endpoint]
@@ -98,14 +101,32 @@ pub trait WhitelistActionsModule:
             "Not whitelisted for action"
         );
 
-        match opt_user_tokens {
+        let action_payments = match opt_user_tokens {
             OptionalValue::Some(user_tokens) => {
                 self.deduct_single_payment(user_id, &user_tokens);
 
-                // TODO
+                PaymentsVec::from_single_item(user_tokens)
             }
-            OptionalValue::None => todo!(),
-        }
+            OptionalValue::None => PaymentsVec::new(),
+        };
+
+        let gas_limit = self.get_gas_for_promise();
+        let action_data = GeneralActionData {
+            call_type: CallType::Async,
+            dest_address: sc_address,
+            payments: action_payments,
+            opt_execution: Some(ScExecutionData {
+                endpoint_name,
+                args: endpoint_args,
+                gas_limit,
+            }),
+        };
+        let own_sc_address = self.blockchain().get_sc_address();
+        self.multi_action_for_user_common(
+            &user_address,
+            &ManagedVec::from_single_item(action_data),
+            &own_sc_address,
+        );
     }
 
     #[view(getAllWhitelistedUsers)]

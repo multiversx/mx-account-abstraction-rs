@@ -25,16 +25,7 @@ pub trait UsersModule: super::signature::SignatureModule {
     #[endpoint(depositForUser)]
     fn deposit_for_user(&self, user_address: ManagedAddress) {
         let user_id = self.user_ids().get_id_non_zero(&user_address);
-        let mut payments = self.call_value().all_esdt_transfers().clone_value();
-        let egld_value = self.call_value().egld_value().clone_value();
-        if egld_value > 0 {
-            payments.push(EsdtTokenPayment::new(
-                TokenIdentifier::from_esdt_bytes(EGLD_TOKEN_ID),
-                0,
-                egld_value,
-            ));
-        }
-
+        let payments = self.get_esdt_and_egld_payments();
         require!(!payments.is_empty(), "No payments");
 
         let unique_payments = UniquePayments::new_from_payments(payments);
@@ -71,6 +62,20 @@ pub trait UsersModule: super::signature::SignatureModule {
         }
     }
 
+    fn get_esdt_and_egld_payments(&self) -> PaymentsVec<Self::Api> {
+        let mut payments = self.call_value().all_esdt_transfers().clone_value();
+        let egld_value = self.call_value().egld_value().clone_value();
+        if egld_value > 0 {
+            payments.push(EsdtTokenPayment::new(
+                TokenIdentifier::from_esdt_bytes(EGLD_TOKEN_ID),
+                0,
+                egld_value,
+            ));
+        }
+
+        payments
+    }
+
     fn deduct_single_payment(&self, user_id: AddressId, tokens: &EsdtTokenPayment) {
         self.user_tokens(user_id).update(|user_tokens| {
             let deduct_result = user_tokens.deduct_payment(tokens);
@@ -83,8 +88,6 @@ pub trait UsersModule: super::signature::SignatureModule {
         action_payments: &PaymentsVec<Self::Api>,
         user_tokens: &mut UniquePayments<Self::Api>,
     ) {
-        require!(!action_payments.is_empty(), "No payments for action");
-
         for payment in action_payments {
             let deduct_result = user_tokens.deduct_payment(&payment);
             require!(deduct_result.is_ok(), NOT_ENOUGH_TOKENS_ERR_MSG);
