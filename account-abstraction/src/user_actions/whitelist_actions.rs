@@ -80,6 +80,7 @@ pub trait WhitelistActionsModule:
         }
     }
 
+    /// To pass EGLD payment, simply use "EGLD" as token ID, 0 nonce, and the needed amount
     #[endpoint(takeAction)]
     fn take_action(
         &self,
