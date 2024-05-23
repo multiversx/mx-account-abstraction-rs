@@ -1,4 +1,4 @@
-use crate::user_actions::intents::IntentId;
+use crate::user_actions::intents::{IntentId, IntentType};
 
 use super::common_types::PaymentsVec;
 
@@ -29,7 +29,16 @@ pub trait CustomCallbacksModule:
                     self.user_intent(user_id, intent_id).clear();
                 }
             }
-            ManagedAsyncCallResult::Err(_) => self.refund_user(&original_user, &original_payments),
+            ManagedAsyncCallResult::Err(_) => {
+                self.refund_user(&original_user, &original_payments);
+
+                if let Some(intent_id) = opt_intent_id {
+                    let user_id = self.user_ids().get_id_non_zero(&original_user);
+                    self.user_intent(user_id, intent_id).update(|intent| {
+                        intent.intent_type = IntentType::AwaitingExecution;
+                    });
+                }
+            }
         }
     }
 

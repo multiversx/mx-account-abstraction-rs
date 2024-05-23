@@ -1,6 +1,4 @@
-use crate::common::common_types::GeneralActionData;
-
-use super::intents::IntentId;
+use super::intents::{Intent, IntentId};
 
 multiversx_sc::imports!();
 
@@ -14,7 +12,7 @@ pub trait IntentStorageModule {
         &self,
         user_id: AddressId,
         intent_id: IntentId,
-    ) -> SingleValueMapper<GeneralActionData<Self::Api>>;
+    ) -> SingleValueMapper<Intent<Self::Api>>;
 
     #[storage_mapper("lastIntentId")]
     fn last_intent_id(&self) -> SingleValueMapper<IntentId>;

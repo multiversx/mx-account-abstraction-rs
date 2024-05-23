@@ -1,6 +1,7 @@
-use crate::common::common_types::GeneralActionData;
-
-use super::{intents::IntentId, whitelist_actions::WhitelistAction};
+use super::{
+    intents::{Intent, IntentId},
+    whitelist_actions::WhitelistAction,
+};
 
 multiversx_sc::imports!();
 
@@ -71,7 +72,7 @@ pub trait ViewsModule:
         &self,
         user_address: ManagedAddress,
         intent_id: IntentId,
-    ) -> GeneralActionData<Self::Api> {
+    ) -> Intent<Self::Api> {
         let user_id = self.user_ids().get_id_non_zero(&user_address);
         self.user_intent(user_id, intent_id).get()
     }

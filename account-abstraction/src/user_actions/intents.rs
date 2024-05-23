@@ -1,8 +1,33 @@
-use crate::common::common_types::{Action, ActionMultiValue, ActionStruct, CallType};
+use crate::common::common_types::{
+    Action, ActionMultiValue, ActionStruct, CallType, GeneralActionData,
+};
 
 pub type IntentId = u64;
 
+#[derive(TypeAbi, TopEncode, TopDecode, NestedDecode, NestedEncode)]
+pub enum IntentType {
+    AwaitingExecution,
+    InProgress,
+}
+
+#[derive(TypeAbi, TopEncode, TopDecode, NestedDecode, NestedEncode)]
+pub struct Intent<M: ManagedTypeApi> {
+    pub intent_type: IntentType,
+    pub intent_data: GeneralActionData<M>,
+}
+
+impl<M: ManagedTypeApi> Intent<M> {
+    #[inline]
+    pub fn new(intent_type: IntentType, intent_data: GeneralActionData<M>) -> Self {
+        Self {
+            intent_type,
+            intent_data,
+        }
+    }
+}
+
 multiversx_sc::imports!();
+multiversx_sc::derive_imports!();
 
 #[multiversx_sc::module]
 pub trait IntentsModule:
@@ -52,9 +77,22 @@ pub trait IntentsModule:
     #[endpoint(executeIntent)]
     fn execute_intent(&self, user_address: ManagedAddress, intent_id: IntentId) {
         let user_id = self.user_ids().get_id_non_zero(&user_address);
-        let mut intent = self.user_intent(user_id, intent_id).get();
-        let egld_value = self.get_egld_value(&mut intent.payments);
-        self.execute_action_by_type(user_address.clone(), egld_value, intent, Some(intent_id));
+        let intent_mapper = self.user_intent(user_id, intent_id);
+        require!(!intent_mapper.is_empty(), "Intent doesn't exist");
+
+        let mut intent = intent_mapper.get();
+        require!(
+            matches!(intent.intent_type, IntentType::AwaitingExecution),
+            "Intent execution already in progress"
+        );
+
+        let egld_value = self.get_egld_value(&mut intent.intent_data.payments);
+        self.execute_action_by_type(
+            user_address.clone(),
+            egld_value,
+            intent.intent_data,
+            Some(intent_id),
+        );
     }
 
     fn save_intents_common(
@@ -76,7 +114,8 @@ pub trait IntentsModule:
             );
 
             let _ = all_intents_mapper.insert(intent_id);
-            self.user_intent(user_id, intent_id).set(action);
+            self.user_intent(user_id, intent_id)
+                .set(Intent::new(IntentType::AwaitingExecution, action));
 
             intent_id += 1;
         }
