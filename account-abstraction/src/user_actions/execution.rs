@@ -5,6 +5,8 @@ use crate::common::common_types::{
     GeneralActionData, PaymentsVec, EGLD_TOKEN_ID,
 };
 
+use super::intents::IntentId;
+
 const DEFAULT_EXTRA_CALLBACK_GAS: GasLimit = 10_000_000;
 static INVALID_TX_DATA_ERR_MSG: &[u8] = b"Invalid Tx data";
 
@@ -15,6 +17,7 @@ pub trait ExecutionModule:
     crate::common::users::UsersModule
     + crate::common::signature::SignatureModule
     + crate::common::custom_callbacks::CustomCallbacksModule
+    + super::intent_storage::IntentStorageModule
 {
     #[endpoint(multiActionForUser)]
     fn multi_action_for_user(
@@ -59,13 +62,28 @@ pub trait ExecutionModule:
         actions: &ManagedVec<T>,
         own_sc_address: &ManagedAddress,
     ) {
+        self.check_can_execute_actions(user_address, actions, own_sc_address);
+
+        for action_struct in actions {
+            let mut action = action_struct.get_general_action_data();
+            let egld_value = self.get_egld_value(&mut action.payments);
+            self.execute_action_by_type(user_address.clone(), egld_value, action, None);
+        }
+    }
+
+    fn check_can_execute_actions<T: Action<Self::Api>>(
+        &self,
+        user_address: &ManagedAddress,
+        actions: &ManagedVec<T>,
+        own_sc_address: &ManagedAddress,
+    ) {
         let user_id = self.user_ids().get_id_non_zero(user_address);
         let nonce_mapper = self.user_nonce(user_id);
         let mut user_nonce = nonce_mapper.get();
         let tokens_mapper = self.user_tokens(user_id);
         let mut user_tokens = tokens_mapper.get();
         for action_struct in actions {
-            let (opt_nonce, opt_signature, mut action) = (
+            let (opt_nonce, opt_signature, action) = (
                 action_struct.get_opt_nonce(),
                 action_struct.get_opt_signature(),
                 action_struct.get_general_action_data(),
@@ -95,9 +113,6 @@ pub trait ExecutionModule:
 
             self.check_exec_args(&action);
             self.deduct_payments(&action.payments, &mut user_tokens);
-
-            let egld_value = self.get_egld_value(&mut action.payments);
-            self.execute_action_by_type(user_address.clone(), egld_value, action);
         }
 
         nonce_mapper.set(user_nonce);
@@ -170,6 +185,7 @@ pub trait ExecutionModule:
         user_address: ManagedAddress,
         egld_value: BigUint,
         action: GeneralActionData<Self::Api>,
+        opt_intent_id: Option<IntentId>,
     ) {
         match action.call_type {
             CallType::Transfer => {
@@ -198,10 +214,11 @@ pub trait ExecutionModule:
                 let mut original_payments = action.payments.clone();
                 if egld_value == 0 {
                     let tx = self.build_esdt_tx(action);
-                    tx.with_callback(
-                        self.callbacks()
-                            .user_action_cb(user_address, original_payments),
-                    )
+                    tx.with_callback(self.callbacks().user_action_cb(
+                        user_address,
+                        original_payments,
+                        opt_intent_id,
+                    ))
                     .with_extra_gas_for_callback(DEFAULT_EXTRA_CALLBACK_GAS)
                     .register_promise();
                 } else {
@@ -212,10 +229,11 @@ pub trait ExecutionModule:
                     ));
 
                     let tx = self.build_egld_tx(egld_value, action);
-                    tx.with_callback(
-                        self.callbacks()
-                            .user_action_cb(user_address, original_payments),
-                    )
+                    tx.with_callback(self.callbacks().user_action_cb(
+                        user_address,
+                        original_payments,
+                        opt_intent_id,
+                    ))
                     .with_extra_gas_for_callback(DEFAULT_EXTRA_CALLBACK_GAS)
                     .register_promise();
                 }

@@ -6,9 +6,9 @@
 
 // Init:                                 1
 // Upgrade:                              1
-// Endpoints:                           11
+// Endpoints:                           16
 // Async Callback:                       1
-// Total number of exported functions:  14
+// Total number of exported functions:  19
 
 #![no_std]
 
@@ -29,8 +29,13 @@ multiversx_sc_wasm_adapter::endpoints! {
         whitelist => whitelist
         removeWhitelist => remove_whitelist
         takeAction => take_action
+        saveIntents => save_intents
+        multiUserSaveIntents => multi_user_save_intents
+        executeIntent => execute_intent
         getAllWhitelistedUsers => get_all_whitelisted_users
         getWhitelistTypes => get_whitelist_types
+        getAllUserIntentIds => get_all_user_intent_ids
+        getIntentInfo => get_intent_info
     )
 }
 

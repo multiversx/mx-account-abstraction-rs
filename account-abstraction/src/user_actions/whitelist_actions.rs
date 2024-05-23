@@ -29,6 +29,7 @@ pub trait WhitelistActionsModule:
     + crate::common::signature::SignatureModule
     + crate::common::custom_callbacks::CustomCallbacksModule
     + super::execution::ExecutionModule
+    + super::intent_storage::IntentStorageModule
 {
     /// Pairs of (SC address, endpoint name)
     #[endpoint]
