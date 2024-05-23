@@ -1,4 +1,4 @@
-use super::common_types::GeneralActionData;
+use super::common_types::{GeneralActionData, Nonce};
 
 multiversx_sc::imports!();
 
@@ -8,7 +8,6 @@ pub type Signature<M> = ManagedByteArray<M, SIGNATURE_LEN>;
 static REGISTER_ENDPOINT_NAME: &[u8] = b"registerUser";
 static FIELDS_SEPARATOR_CHAR: &[u8] = b"@";
 
-pub type Nonce = u64;
 const FIRST_NONCE: Nonce = 0;
 
 pub struct CheckExecutionSignatureArgs<'a, M: ManagedTypeApi> {
@@ -35,12 +34,7 @@ pub trait SignatureModule {
         signature_data.append_bytes(FIELDS_SEPARATOR_CHAR);
         signature_data.append_bytes(&FIRST_NONCE.to_be_bytes());
 
-        // TODO: Update to Secp256r1 when it's available
-        self.crypto().verify_ed25519(
-            user_address.as_managed_buffer(),
-            &signature_data,
-            signature.as_managed_buffer(),
-        );
+        self.check_sig(user_address, &signature_data, signature);
     }
 
     fn check_execution_signature(&self, args: CheckExecutionSignatureArgs<Self::Api>) {
@@ -57,11 +51,30 @@ pub trait SignatureModule {
         signature_data.append_bytes(FIELDS_SEPARATOR_CHAR);
         signature_data.append(&serialized_action);
 
+        self.check_sig(args.user_address, &signature_data, args.signature);
+    }
+
+    #[cfg(not(test))]
+    fn check_sig(
+        &self,
+        user_address: &ManagedAddress,
+        signature_data: &ManagedBuffer,
+        signature: &Signature<Self::Api>,
+    ) {
         // TODO: Update to Secp256r1 when it's available
         self.crypto().verify_ed25519(
-            args.user_address.as_managed_buffer(),
-            &signature_data,
-            args.signature.as_managed_buffer(),
+            user_address.as_managed_buffer(),
+            signature_data,
+            signature.as_managed_buffer(),
         );
+    }
+
+    #[cfg(test)]
+    fn check_sig(
+        &self,
+        _user_address: &ManagedAddress,
+        _signature_data: &ManagedBuffer,
+        _signature: &Signature<Self::Api>,
+    ) {
     }
 }
