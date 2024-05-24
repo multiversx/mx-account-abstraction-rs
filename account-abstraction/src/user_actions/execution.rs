@@ -54,11 +54,7 @@ pub trait ExecutionModule:
         let mut actions_vec = ManagedVec::new();
         for action_multi in actions {
             let (action, user_nonce, signature) = action_multi.into_tuple();
-            let action_struct = ActionStruct {
-                action,
-                user_nonce,
-                signature,
-            };
+            let action_struct = ActionStruct::new(action, user_nonce, signature);
             actions_vec.push(action_struct);
         }
 

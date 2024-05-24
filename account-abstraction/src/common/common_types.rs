@@ -36,6 +36,17 @@ pub struct ActionStruct<M: ManagedTypeApi> {
     pub signature: Signature<M>,
 }
 
+impl<M: ManagedTypeApi> ActionStruct<M> {
+    #[inline]
+    pub fn new(action: GeneralActionData<M>, user_nonce: Nonce, signature: Signature<M>) -> Self {
+        Self {
+            action,
+            user_nonce,
+            signature,
+        }
+    }
+}
+
 pub trait Action<M: ManagedTypeApi>: ManagedVecItem {
     fn get_general_action_data(self) -> GeneralActionData<M>;
 
@@ -208,7 +219,6 @@ impl<M: ManagedTypeApi> UniquePayments<M> {
         self.payments.push(new_payment);
     }
 
-    #[must_use]
     #[allow(clippy::result_unit_err)]
     pub fn deduct_payment(&mut self, payment: &EsdtTokenPayment<M>) -> Result<(), ()> {
         if payment.amount == 0 {
