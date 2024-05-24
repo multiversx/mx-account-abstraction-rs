@@ -1,4 +1,7 @@
-use super::whitelist_actions::WhitelistAction;
+use super::{
+    intents::{Intent, IntentId},
+    whitelist_actions::WhitelistAction,
+};
 
 multiversx_sc::imports!();
 
@@ -9,6 +12,8 @@ pub trait ViewsModule:
     + crate::common::signature::SignatureModule
     + crate::common::custom_callbacks::CustomCallbacksModule
     + super::execution::ExecutionModule
+    + super::intents::IntentsModule
+    + super::intent_storage::IntentStorageModule
 {
     #[view(getAllWhitelistedUsers)]
     fn get_all_whitelisted_users(
@@ -49,5 +54,26 @@ pub trait ViewsModule:
         }
 
         result
+    }
+
+    #[view(getAllUserIntentIds)]
+    fn get_all_user_intent_ids(&self, user_address: ManagedAddress) -> MultiValueEncoded<IntentId> {
+        let user_id = self.user_ids().get_id_non_zero(&user_address);
+        let mut result = MultiValueEncoded::new();
+        for intent_id in self.all_user_intents(user_id).iter() {
+            result.push(intent_id);
+        }
+
+        result
+    }
+
+    #[view(getIntentInfo)]
+    fn get_intent_info(
+        &self,
+        user_address: ManagedAddress,
+        intent_id: IntentId,
+    ) -> Intent<Self::Api> {
+        let user_id = self.user_ids().get_id_non_zero(&user_address);
+        self.user_intent(user_id, intent_id).get()
     }
 }
