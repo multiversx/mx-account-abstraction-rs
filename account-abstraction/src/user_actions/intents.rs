@@ -43,19 +43,8 @@ pub trait IntentsModule:
         user_address: ManagedAddress,
         actions: MultiValueEncoded<ActionMultiValue<Self::Api>>,
     ) {
-        self.require_non_empty_actions(&actions);
-
         let own_sc_address = self.blockchain().get_sc_address();
-        let mut actions_vec = ManagedVec::new();
-        for action_multi in actions {
-            let (action, user_nonce, signature) = action_multi.into_tuple();
-            let action_struct = ActionStruct {
-                action,
-                user_nonce,
-                signature,
-            };
-            actions_vec.push(action_struct);
-        }
+        let actions_vec = self.collect_actions(actions);
         self.save_intents_common(&user_address, &actions_vec, &own_sc_address);
     }
 
