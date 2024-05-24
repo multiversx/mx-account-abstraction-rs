@@ -54,7 +54,7 @@ pub trait SignatureModule {
         self.check_sig(args.user_address, &signature_data, args.signature);
     }
 
-    #[cfg(not(test))]
+    #[cfg(not(debug_assertions))]
     fn check_sig(
         &self,
         user_address: &ManagedAddress,
@@ -69,7 +69,7 @@ pub trait SignatureModule {
         );
     }
 
-    #[cfg(test)]
+    #[cfg(debug_assertions)]
     fn check_sig(
         &self,
         _user_address: &ManagedAddress,
