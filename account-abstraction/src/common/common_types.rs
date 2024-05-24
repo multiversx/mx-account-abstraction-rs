@@ -1,10 +1,11 @@
-use super::signature::{Nonce, Signature};
+use super::signature::Signature;
 use mergeable::Mergeable;
 
 multiversx_sc::imports!();
 multiversx_sc::derive_imports!();
 
 pub type PaymentsVec<M> = ManagedVec<M, EsdtTokenPayment<M>>;
+pub type Nonce = u64;
 pub type GasLimit = u64;
 pub type ActionMultiValue<M> = MultiValue3<GeneralActionData<M>, Nonce, Signature<M>>;
 pub type EsdtTxType<M> = Tx<

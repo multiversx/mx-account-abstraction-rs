@@ -1,8 +1,8 @@
 use mergeable::Mergeable;
 
 use super::{
-    common_types::{PaymentsVec, UniquePayments, EGLD_TOKEN_ID},
-    signature::{Nonce, Signature},
+    common_types::{Nonce, PaymentsVec, UniquePayments, EGLD_TOKEN_ID},
+    signature::Signature,
 };
 
 multiversx_sc::imports!();
