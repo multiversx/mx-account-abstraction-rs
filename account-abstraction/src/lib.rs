@@ -3,17 +3,16 @@
 #[allow(unused_imports)]
 use multiversx_sc::imports::*;
 
-pub mod signature;
-pub mod unique_payments;
+pub mod common;
 pub mod user_actions;
-pub mod users;
 
 #[multiversx_sc::contract]
 pub trait AccountAbstraction:
-    users::UsersModule
-    + signature::SignatureModule
+    common::users::UsersModule
+    + common::signature::SignatureModule
     + user_actions::execution::ExecutionModule
-    + utils::UtilsModule
+    + user_actions::whitelist_actions::WhitelistActionsModule
+    + common::custom_callbacks::CustomCallbacksModule
 {
     #[init]
     fn init(&self) {}

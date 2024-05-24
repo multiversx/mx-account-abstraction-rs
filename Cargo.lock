@@ -20,7 +20,6 @@ dependencies = [
  "multiversx-sc",
  "multiversx-sc-scenario",
  "num-bigint",
- "utils",
 ]
 
 [[package]]
@@ -328,18 +327,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2382f75942f4b3be3690fe4f86365e9c853c1587d6ee58212cebf6e2a9ccd101"
 
 [[package]]
-name = "common_structs"
-version = "0.0.0"
-source = "git+https://github.com/multiversx/mx-exchange-sc?rev=c136244#c1362440452f13e4a3b33d93479653619c72c177"
-dependencies = [
- "fixed-supply-token",
- "math",
- "mergeable",
- "multiversx-sc",
- "unwrappable",
-]
-
-[[package]]
 name = "convert_case"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -546,14 +533,6 @@ name = "fastrand"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
-
-[[package]]
-name = "fixed-supply-token"
-version = "0.0.0"
-source = "git+https://github.com/multiversx/mx-exchange-sc?rev=c136244#c1362440452f13e4a3b33d93479653619c72c177"
-dependencies = [
- "multiversx-sc",
-]
 
 [[package]]
 name = "flate2"
@@ -967,14 +946,6 @@ name = "log"
 version = "0.4.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
-
-[[package]]
-name = "math"
-version = "0.0.0"
-source = "git+https://github.com/multiversx/mx-exchange-sc?rev=c136244#c1362440452f13e4a3b33d93479653619c72c177"
-dependencies = [
- "multiversx-sc",
-]
 
 [[package]]
 name = "memchr"
@@ -2142,14 +2113,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "151ac09978d3c2862c4e39b557f4eceee2cc72150bc4cb4f16abf061b6e381fb"
 
 [[package]]
-name = "unwrappable"
-version = "0.0.0"
-source = "git+https://github.com/multiversx/mx-exchange-sc?rev=c136244#c1362440452f13e4a3b33d93479653619c72c177"
-dependencies = [
- "multiversx-sc",
-]
-
-[[package]]
 name = "url"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2165,17 +2128,6 @@ name = "utf8parse"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "711b9620af191e0cdc7468a8d14e709c3dcdb115b36f838e601583af800a370a"
-
-[[package]]
-name = "utils"
-version = "0.0.0"
-source = "git+https://github.com/multiversx/mx-exchange-sc?rev=c136244#c1362440452f13e4a3b33d93479653619c72c177"
-dependencies = [
- "common_structs",
- "fixed-supply-token",
- "mergeable",
- "multiversx-sc",
-]
 
 [[package]]
 name = "vcpkg"
