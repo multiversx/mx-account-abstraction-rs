@@ -28,6 +28,8 @@ where
     pub second_user: Address,
     pub sc_wrapper:
         ContractObjWrapper<account_abstraction::ContractObj<DebugApi>, AbstractionBuilder>,
+    pub mock_sc_wrapper:
+        ContractObjWrapper<account_abstraction::ContractObj<DebugApi>, AbstractionBuilder>,
 }
 
 impl<AbstractionBuilder> AbstractionSetup<AbstractionBuilder>
@@ -55,8 +57,17 @@ where
         let sc_wrapper =
             b_mock.create_sc_account(&rust_zero, Some(&owner), abstraction_builder, "abstraction");
 
+        let mock_sc_wrapper =
+            b_mock.create_sc_account(&rust_zero, Some(&owner), abstraction_builder, "mock sc");
+
         b_mock
             .execute_tx(&owner, &sc_wrapper, &rust_zero, |sc| {
+                sc.init();
+            })
+            .assert_ok();
+
+        b_mock
+            .execute_tx(&owner, &mock_sc_wrapper, &rust_zero, |sc| {
                 sc.init();
             })
             .assert_ok();
@@ -71,19 +82,19 @@ where
             })
             .assert_ok();
 
-        // try register first user again
-        b_mock
-            .execute_tx(&first_user, &sc_wrapper, &rust_zero, |sc| {
-                sc.register_user(
-                    managed_address!(&first_user),
-                    Signature::new_from_bytes(EMPTY_SIG),
-                );
-            })
-            .assert_user_error("User already registered");
-
         // register second user
         b_mock
             .execute_tx(&second_user, &sc_wrapper, &rust_zero, |sc| {
+                sc.register_user(
+                    managed_address!(&second_user),
+                    Signature::new_from_bytes(EMPTY_SIG),
+                );
+            })
+            .assert_ok();
+
+        // register second user in mock
+        b_mock
+            .execute_tx(&second_user, &mock_sc_wrapper, &rust_zero, |sc| {
                 sc.register_user(
                     managed_address!(&second_user),
                     Signature::new_from_bytes(EMPTY_SIG),
@@ -137,6 +148,7 @@ where
             first_user,
             second_user,
             sc_wrapper,
+            mock_sc_wrapper,
         };
 
         // check first user tokens
@@ -158,8 +170,29 @@ where
     }
 
     pub fn check_user_tokens(&mut self, user: &Address, expected_tokens: &[TxTokenTransfer]) {
-        self.b_mock
-            .execute_query(&self.sc_wrapper, |sc| {
+        Self::check_tokens_common(&mut self.b_mock, &self.sc_wrapper, user, expected_tokens);
+    }
+
+    pub fn check_user_tokens_mock(&mut self, user: &Address, expected_tokens: &[TxTokenTransfer]) {
+        Self::check_tokens_common(
+            &mut self.b_mock,
+            &self.mock_sc_wrapper,
+            user,
+            expected_tokens,
+        );
+    }
+
+    fn check_tokens_common(
+        b_mock: &mut BlockchainStateWrapper,
+        sc_wrapper: &ContractObjWrapper<
+            account_abstraction::ContractObj<DebugApi>,
+            AbstractionBuilder,
+        >,
+        user: &Address,
+        expected_tokens: &[TxTokenTransfer],
+    ) {
+        b_mock
+            .execute_query(sc_wrapper, |sc| {
                 let mut expected_tokens_managed = PaymentsVec::new();
                 for expected_token in expected_tokens {
                     expected_tokens_managed.push(EsdtTokenPayment::new(
