@@ -18,6 +18,8 @@ pub const FIRST_USER_ESDT_BALANCE: u64 = 1_000;
 pub const SECOND_USER_ESDT_BALANCE: u64 = 2_000;
 pub static EMPTY_SIG: &[u8; 64] = &[0u8; 64];
 
+pub static DEPOSIT_TOKENS_ENDPOINT_NAME: &[u8] = b"depositForUser";
+
 pub struct AbstractionSetup<AbstractionBuilder>
 where
     AbstractionBuilder: 'static + Copy + Fn() -> account_abstraction::ContractObj<DebugApi>,

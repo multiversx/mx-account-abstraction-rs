@@ -104,11 +104,7 @@ pub trait WhitelistActionsModule:
         );
 
         let action_payments = match opt_user_tokens {
-            OptionalValue::Some(user_tokens) => {
-                self.deduct_single_payment(user_id, &user_tokens);
-
-                PaymentsVec::from_single_item(user_tokens)
-            }
+            OptionalValue::Some(user_tokens) => PaymentsVec::from_single_item(user_tokens),
             OptionalValue::None => PaymentsVec::new(),
         };
 
