@@ -1,127 +1,179 @@
-use account_abstraction::common::{
-    common_types::{PaymentsVec, EGLD_TOKEN_ID},
-    signature::Signature,
+use account_abstraction::{
+    common::{
+        common_types::{PaymentsVec, EGLD_TOKEN_ID},
+        signature::Signature,
+        users::UsersModule,
+    },
+    AccountAbstraction,
 };
-use multiversx_sc::types::{TestAddress, TestSCAddress};
-use multiversx_sc_scenario::imports::*;
+use multiversx_sc::types::{Address, EsdtTokenPayment};
+use multiversx_sc_scenario::{
+    imports::{BlockchainStateWrapper, ContractObjWrapper, TxTokenTransfer},
+    managed_address, managed_token_id, rust_biguint, DebugApi,
+};
 
-pub static OWNER_ADDRESS: TestAddress = TestAddress::new("owner");
-pub static FIRST_USER_ADDRESS: TestAddress = TestAddress::new("firstUser");
-pub static SECOND_USER_ADDRESS: TestAddress = TestAddress::new("secondUser");
-pub static SC_ADDRESS: TestSCAddress = TestSCAddress::new("accAbstSc");
-pub static CODE_PATH: MxscPath = MxscPath::new("output/account-abstraction.mxsc.json");
-
-pub static TOKEN_ID: TestTokenIdentifier = TestTokenIdentifier::new("MYTOK-123456");
+pub static TOKEN_ID: &[u8] = b"MYTOK-123456";
 pub const FIRST_USER_EGLD_BALANCE: u64 = 500;
 pub const FIRST_USER_ESDT_BALANCE: u64 = 1_000;
 pub const SECOND_USER_ESDT_BALANCE: u64 = 2_000;
 pub static EMPTY_SIG: &[u8; 64] = &[0u8; 64];
 
-pub struct AccAbstractionSetup {
-    pub b_mock: ScenarioWorld,
+pub struct AbstractionSetup<AbstractionBuilder>
+where
+    AbstractionBuilder: 'static + Copy + Fn() -> account_abstraction::ContractObj<DebugApi>,
+{
+    pub b_mock: BlockchainStateWrapper,
+    pub owner: Address,
+    pub first_user: Address,
+    pub second_user: Address,
+    pub sc_wrapper:
+        ContractObjWrapper<account_abstraction::ContractObj<DebugApi>, AbstractionBuilder>,
 }
 
-impl AccAbstractionSetup {
-    pub fn new() -> Self {
-        let mut b_mock = ScenarioWorld::new();
-        b_mock.register_contract(CODE_PATH, account_abstraction::ContractBuilder);
-        b_mock.account(OWNER_ADDRESS);
+impl<AbstractionBuilder> AbstractionSetup<AbstractionBuilder>
+where
+    AbstractionBuilder: 'static + Copy + Fn() -> account_abstraction::ContractObj<DebugApi>,
+{
+    pub fn new(abstraction_builder: AbstractionBuilder) -> Self {
+        let rust_zero = rust_biguint!(0);
+
+        let mut b_mock = BlockchainStateWrapper::new();
+        let owner = b_mock.create_user_account(&rust_zero);
+        let first_user = b_mock.create_user_account(&rust_biguint!(FIRST_USER_EGLD_BALANCE));
+        let second_user = b_mock.create_user_account(&rust_zero);
+        b_mock.set_esdt_balance(
+            &first_user,
+            TOKEN_ID,
+            &rust_biguint!(FIRST_USER_ESDT_BALANCE),
+        );
+        b_mock.set_esdt_balance(
+            &second_user,
+            TOKEN_ID,
+            &rust_biguint!(SECOND_USER_ESDT_BALANCE),
+        );
+
+        let sc_wrapper =
+            b_mock.create_sc_account(&rust_zero, Some(&owner), abstraction_builder, "abstraction");
 
         b_mock
-            .account(FIRST_USER_ADDRESS)
-            .balance(FIRST_USER_EGLD_BALANCE)
-            .esdt_balance(TOKEN_ID, FIRST_USER_ESDT_BALANCE);
-        b_mock
-            .account(SECOND_USER_ADDRESS)
-            .esdt_balance(TOKEN_ID, SECOND_USER_ESDT_BALANCE);
-
-        b_mock
-            .tx()
-            .from(OWNER_ADDRESS)
-            .typed(account_abstraction::own_proxy::AccountAbstractionProxy)
-            .init()
-            .code(CODE_PATH)
-            .new_address(SC_ADDRESS)
-            .run();
+            .execute_tx(&owner, &sc_wrapper, &rust_zero, |sc| {
+                sc.init();
+            })
+            .assert_ok();
 
         // register first user
         b_mock
-            .tx()
-            .from(FIRST_USER_ADDRESS)
-            .to(SC_ADDRESS)
-            .typed(account_abstraction::own_proxy::AccountAbstractionProxy)
-            .register_user(FIRST_USER_ADDRESS, Signature::new_from_bytes(EMPTY_SIG))
-            .run();
+            .execute_tx(&first_user, &sc_wrapper, &rust_zero, |sc| {
+                sc.register_user(
+                    managed_address!(&first_user),
+                    Signature::new_from_bytes(EMPTY_SIG),
+                );
+            })
+            .assert_ok();
 
         // try register first user again
         b_mock
-            .tx()
-            .from(FIRST_USER_ADDRESS)
-            .to(SC_ADDRESS)
-            .typed(account_abstraction::own_proxy::AccountAbstractionProxy)
-            .register_user(FIRST_USER_ADDRESS, Signature::new_from_bytes(EMPTY_SIG))
-            .with_result(ExpectMessage("User already registered"))
-            .run();
+            .execute_tx(&first_user, &sc_wrapper, &rust_zero, |sc| {
+                sc.register_user(
+                    managed_address!(&first_user),
+                    Signature::new_from_bytes(EMPTY_SIG),
+                );
+            })
+            .assert_user_error("User already registered");
 
         // register second user
         b_mock
-            .tx()
-            .from(SECOND_USER_ADDRESS)
-            .to(SC_ADDRESS)
-            .typed(account_abstraction::own_proxy::AccountAbstractionProxy)
-            .register_user(SECOND_USER_ADDRESS, Signature::new_from_bytes(EMPTY_SIG))
-            .run();
+            .execute_tx(&second_user, &sc_wrapper, &rust_zero, |sc| {
+                sc.register_user(
+                    managed_address!(&second_user),
+                    Signature::new_from_bytes(EMPTY_SIG),
+                );
+            })
+            .assert_ok();
 
         // first user deposit EGLD
         b_mock
-            .tx()
-            .from(FIRST_USER_ADDRESS)
-            .to(SC_ADDRESS)
-            .typed(account_abstraction::own_proxy::AccountAbstractionProxy)
-            .deposit_for_user(FIRST_USER_ADDRESS)
-            .egld(FIRST_USER_EGLD_BALANCE)
-            .run();
+            .execute_tx(
+                &first_user,
+                &sc_wrapper,
+                &rust_biguint!(FIRST_USER_EGLD_BALANCE),
+                |sc| {
+                    sc.deposit_for_user(managed_address!(&first_user));
+                },
+            )
+            .assert_ok();
 
         // first user deposit ESDT
         b_mock
-            .tx()
-            .from(FIRST_USER_ADDRESS)
-            .to(SC_ADDRESS)
-            .typed(account_abstraction::own_proxy::AccountAbstractionProxy)
-            .deposit_for_user(FIRST_USER_ADDRESS)
-            .single_esdt(&TOKEN_ID.into(), 0u64, &FIRST_USER_ESDT_BALANCE.into())
-            .run();
+            .execute_esdt_transfer(
+                &first_user,
+                &sc_wrapper,
+                TOKEN_ID,
+                0,
+                &rust_biguint!(FIRST_USER_ESDT_BALANCE),
+                |sc| {
+                    sc.deposit_for_user(managed_address!(&first_user));
+                },
+            )
+            .assert_ok();
 
         // second user deposit ESDT
         b_mock
-            .tx()
-            .from(SECOND_USER_ADDRESS)
-            .to(SC_ADDRESS)
-            .typed(account_abstraction::own_proxy::AccountAbstractionProxy)
-            .deposit_for_user(SECOND_USER_ADDRESS)
-            .single_esdt(&TOKEN_ID.into(), 0u64, &SECOND_USER_ESDT_BALANCE.into())
-            .run();
+            .execute_esdt_transfer(
+                &second_user,
+                &sc_wrapper,
+                TOKEN_ID,
+                0,
+                &rust_biguint!(SECOND_USER_ESDT_BALANCE),
+                |sc| {
+                    sc.deposit_for_user(managed_address!(&second_user));
+                },
+            )
+            .assert_ok();
+
+        let mut own_inst = Self {
+            b_mock,
+            owner,
+            first_user,
+            second_user,
+            sc_wrapper,
+        };
 
         // check first user tokens
-        let mut expected_first_user_tokens = PaymentsVec::new();
-        expected_first_user_tokens.push(EsdtTokenPayment::new(
-            TokenIdentifier::from_esdt_bytes(EGLD_TOKEN_ID),
-            0u64,
-            FIRST_USER_EGLD_BALANCE.into(),
-        ));
-        expected_first_user_tokens.push(EsdtTokenPayment::new(
-            TOKEN_ID.into(),
-            0u64,
-            FIRST_USER_ESDT_BALANCE.into(),
-        ));
-        b_mock
-            .query()
-            .to(SC_ADDRESS)
-            .typed(account_abstraction::own_proxy::AccountAbstractionProxy)
-            .get_user_tokens(FIRST_USER_ADDRESS)
-            .returns(ExpectValue(expected_first_user_tokens))
-            .run();
+        let expected_first_user_tokens = [
+            TxTokenTransfer {
+                token_identifier: EGLD_TOKEN_ID.to_vec(),
+                nonce: 0,
+                value: rust_biguint!(FIRST_USER_EGLD_BALANCE),
+            },
+            TxTokenTransfer {
+                token_identifier: TOKEN_ID.to_vec(),
+                nonce: 0,
+                value: rust_biguint!(FIRST_USER_ESDT_BALANCE),
+            },
+        ];
+        own_inst.check_user_tokens(&own_inst.first_user.clone(), &expected_first_user_tokens);
 
-        Self { b_mock }
+        own_inst
+    }
+
+    pub fn check_user_tokens(&mut self, user: &Address, expected_tokens: &[TxTokenTransfer]) {
+        self.b_mock
+            .execute_query(&self.sc_wrapper, |sc| {
+                let mut expected_tokens_managed = PaymentsVec::new();
+                for expected_token in expected_tokens {
+                    expected_tokens_managed.push(EsdtTokenPayment::new(
+                        managed_token_id!(expected_token.token_identifier.clone()),
+                        expected_token.nonce,
+                        multiversx_sc::types::BigUint::from_bytes_be(
+                            expected_token.value.to_bytes_be().as_slice(),
+                        ),
+                    ));
+                }
+
+                let actual_user_tokens = sc.get_user_tokens(managed_address!(&user));
+                assert_eq!(expected_tokens_managed, actual_user_tokens);
+            })
+            .assert_ok();
     }
 }

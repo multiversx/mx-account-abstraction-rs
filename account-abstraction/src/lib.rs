@@ -4,7 +4,6 @@
 use multiversx_sc::imports::*;
 
 pub mod common;
-pub mod own_proxy;
 pub mod user_actions;
 
 #[multiversx_sc::contract]
