@@ -140,7 +140,9 @@ impl<M: ManagedTypeApi> GeneralActionData<M> {
                 }
 
                 let mut name_buffer = [0u8; MAX_ENDPOINT_NAME_LEN];
-                let copy_result = execution.endpoint_name.load_slice(0, &mut name_buffer);
+                let copy_result = execution
+                    .endpoint_name
+                    .load_slice(0, &mut name_buffer[0..name_len]);
                 if copy_result.is_err() {
                     M::error_api_impl().signal_error(b"Error copying to byte array");
                 }
