@@ -25,19 +25,8 @@ pub trait ExecutionModule:
         user_address: ManagedAddress,
         actions: MultiValueEncoded<ActionMultiValue<Self::Api>>,
     ) {
-        self.require_non_empty_actions(&actions);
-
         let own_sc_address = self.blockchain().get_sc_address();
-        let mut actions_vec = ManagedVec::new();
-        for action_multi in actions {
-            let (action, user_nonce, signature) = action_multi.into_tuple();
-            let action_struct = ActionStruct {
-                action,
-                user_nonce,
-                signature,
-            };
-            actions_vec.push(action_struct);
-        }
+        let actions_vec = self.collect_actions(actions);
         self.multi_action_for_user_common(&user_address, &actions_vec, &own_sc_address);
     }
 
@@ -54,6 +43,22 @@ pub trait ExecutionModule:
             let (user_address, actions_vec) = pair.into_tuple();
             self.multi_action_for_user_common(&user_address, &actions_vec, &own_sc_address);
         }
+    }
+
+    fn collect_actions(
+        &self,
+        actions: MultiValueEncoded<ActionMultiValue<Self::Api>>,
+    ) -> ManagedVec<ActionStruct<Self::Api>> {
+        self.require_non_empty_actions(&actions);
+
+        let mut actions_vec = ManagedVec::new();
+        for action_multi in actions {
+            let (action, user_nonce, signature) = action_multi.into_tuple();
+            let action_struct = ActionStruct::new(action, user_nonce, signature);
+            actions_vec.push(action_struct);
+        }
+
+        actions_vec
     }
 
     fn multi_action_for_user_common<T: Action<Self::Api>>(

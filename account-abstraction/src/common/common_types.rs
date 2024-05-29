@@ -36,6 +36,17 @@ pub struct ActionStruct<M: ManagedTypeApi> {
     pub signature: Signature<M>,
 }
 
+impl<M: ManagedTypeApi> ActionStruct<M> {
+    #[inline]
+    pub fn new(action: GeneralActionData<M>, user_nonce: Nonce, signature: Signature<M>) -> Self {
+        Self {
+            action,
+            user_nonce,
+            signature,
+        }
+    }
+}
+
 pub trait Action<M: ManagedTypeApi>: ManagedVecItem {
     fn get_general_action_data(self) -> GeneralActionData<M>;
 
