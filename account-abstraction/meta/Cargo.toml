@@ -7,6 +7,6 @@ publish = false
 [dependencies.account-abstraction]
 path = ".."
 
-[dependencies.multiversx-sc-meta]
-version = "=0.50.1"
+[dependencies.multiversx-sc-meta-lib]
+version = "=0.53.0"
 default-features = false

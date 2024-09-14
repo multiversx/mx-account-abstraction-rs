@@ -1,3 +1,3 @@
 fn main() {
-    multiversx_sc_meta::cli_main::<account_abstraction::AbiProvider>();
+    multiversx_sc_meta_lib::cli_main::<account_abstraction::AbiProvider>();
 }

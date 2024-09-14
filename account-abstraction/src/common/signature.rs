@@ -54,27 +54,16 @@ pub trait SignatureModule {
         self.check_sig(args.user_address, &signature_data, args.signature);
     }
 
-    #[cfg(not(debug_assertions))]
     fn check_sig(
         &self,
         user_address: &ManagedAddress,
         signature_data: &ManagedBuffer,
         signature: &Signature<Self::Api>,
     ) {
-        // TODO: Update to Secp256r1 when it's available
-        self.crypto().verify_ed25519(
+        self.crypto().verify_secp256r1(
             user_address.as_managed_buffer(),
             signature_data,
             signature.as_managed_buffer(),
         );
-    }
-
-    #[cfg(debug_assertions)]
-    fn check_sig(
-        &self,
-        _user_address: &ManagedAddress,
-        _signature_data: &ManagedBuffer,
-        _signature: &Signature<Self::Api>,
-    ) {
     }
 }
